@@ -30,6 +30,34 @@ var defaultDNSServers = []string{
 	"8.8.8.8:53",
 }
 
+var queryDNSServers = defaultDNSServers
+
+type dnsServersFlag []string
+
+func (f *dnsServersFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *dnsServersFlag) Set(value string) error {
+	for _, item := range strings.Split(value, ",") {
+		server := strings.TrimSpace(item)
+		if server == "" {
+			continue
+		}
+		if _, _, err := net.SplitHostPort(server); err != nil {
+			if net.ParseIP(server) == nil {
+				return fmt.Errorf("无效的 DNS 服务器地址: %s", server)
+			}
+			server = net.JoinHostPort(server, "53")
+		}
+		*f = append(*f, server)
+	}
+	if len(*f) == 0 {
+		return errors.New("至少指定一个 DNS 服务器")
+	}
+	return nil
+}
+
 var typeNames = map[uint16]string{
 	dns.TypeA: "A", dns.TypeAAAA: "AAAA", dns.TypeCNAME: "CNAME", dns.TypeMX: "MX",
 	dns.TypeNS: "NS", dns.TypeTXT: "TXT", dns.TypeSRV: "SRV", dns.TypeCAA: "CAA",
@@ -129,7 +157,7 @@ func exchangeDNS(ctx context.Context, name string, typ uint16) (*dns.Msg, error)
 	message := new(dns.Msg)
 	message.SetQuestion(dns.Fqdn(name), typ)
 	var lastErr error
-	for _, server := range defaultDNSServers {
+	for _, server := range queryDNSServers {
 		response, _, err := client.ExchangeContext(ctx, message, server)
 		if err != nil {
 			lastErr = err
@@ -290,7 +318,12 @@ func main() {
 	domainFlag := flag.String("d", "", "要查询的主域名，例如 domain.com")
 	webui := flag.Bool("webui", false, "启动 Web UI")
 	addr := flag.String("addr", "127.0.0.1:8080", "Web UI 监听地址")
+	var dnsFlags dnsServersFlag
+	flag.Var(&dnsFlags, "dns", "自定义 DNS 服务器，可重复指定或用逗号分隔（默认使用内置列表）")
 	flag.Parse()
+	if len(dnsFlags) > 0 {
+		queryDNSServers = dnsFlags
+	}
 	if *webui {
 		if err := runWebUI(*addr); err != nil {
 			log.Fatal(err)
