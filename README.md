@@ -15,6 +15,16 @@ go build -o dns-search.exe .
 ./dns-search.exe -d domain.com
 ```
 
+使用自定义 DNS 服务器。`-dns` 可以重复指定，也可以使用逗号分隔；未指定时使用内置默认列表：
+
+```powershell
+./dns-search.exe -d domain.com -dns 223.5.5.5 -dns 114.114.114.114
+./dns-search.exe -d domain.com -dns 8.8.8.8,1.1.1.1
+./dns-search.exe -d domain.com -dns 192.168.1.1:53
+```
+
+`-dns` 同样适用于 `--webui` 模式，Web UI 发起的查询会使用启动参数指定的 DNS 服务器。
+
 不传 `-d` 时进入交互式输入：
 
 ```powershell
@@ -39,3 +49,7 @@ go build -o dns-search.exe .
 2. `114.114.114.114:53`（114DNS）
 3. `1.1.1.1:53`（Cloudflare DNS）
 4. `8.8.8.8:53`（Google Public DNS）
+
+## 自动发布
+
+推送版本标签（例如 `v1.0.0`）后，GitHub Actions 会自动构建 Windows、Linux 和 macOS 的 amd64/arm64 制品，并创建公开 GitHub Release。
